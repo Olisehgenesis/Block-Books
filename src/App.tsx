@@ -108,21 +108,19 @@ const InvoiceApp: React.FC = () => {
     }
   }, [createInvoice, fetchInvoices, invoiceDetails]);
 
-  const renderChainId = () => {
-    if (chainId === null) return null;
-    const isCorrectChain = chainId === SWISSTRONIK_CHAIN_ID;
-    return (
-      <div
-        className={`text-sm ${
-          isCorrectChain ? "text-green-600" : "text-red-600"
-        } mb-4`}
-      >
+  return (
+    <div
+      className={`text-sm ${
+        isCorrectChain ? "text-green-600" : "text-red-600"
+      } mb-4`}
+    >
+      <p>
         {isCorrectChain
           ? "Connected to the correct chain"
           : `Connected to the wrong chain. Please switch to ${SWISSTRONIK_CHAIN_ID}`}
-      </div>
-    );
-  };
+      </p>
+    </div>
+  );
 
   const renderLogin = () => (
     <div
