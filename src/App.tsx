@@ -66,6 +66,8 @@ const InvoiceApp: React.FC = () => {
     try {
       const tx = await createInvoice(invoiceDetails);
       if (tx) {
+        console.log("we are here");
+        console.log(tx);
         setTxHash(tx.transactionHash);
         await fetchInvoices();
         setView("dashboard");

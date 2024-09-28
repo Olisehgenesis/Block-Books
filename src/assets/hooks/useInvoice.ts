@@ -4,7 +4,7 @@ import { SwisstronikPlugin } from '@swisstronik/web3-plugin-swisstronik';
 import InvoiceFactoryABI from '../contract/InvoiceFactory.abi.json';
 import InvoiceABI from '../contract/Invoice.abi.json';
 
-const FACTORY_ADDRESS = '0x92e43D0D8A4c6E86d1c6a2440217F4822A448512';
+const FACTORY_ADDRESS = '0xeBf4A713F0cd981cf7fF4670f50101BF4519d965';
 const RPC_URL = 'https://json-rpc.testnet.swisstronik.com/';
 
 export const useInvoiceContract = () => {
@@ -15,8 +15,8 @@ export const useInvoiceContract = () => {
   useEffect(() => {
     const initWeb3 = async () => {
       try {
-        const web3Instance = new Web3(RPC_URL);
-        web3Instance.registerPlugin(new SwisstronikPlugin());
+        const web3Instance = new Web3(window.ethereum);
+        web3Instance.registerPlugin(new SwisstronikPlugin(RPC_URL));
         setWeb3(web3Instance);
         console.log('Web3 and Swisstronik plugin initialized successfully');
       } catch (err) {
@@ -62,11 +62,13 @@ export const useInvoiceContract = () => {
       const shares = invoiceDetails.shares.map(Number);
       const totalAmount = web3.utils.toWei(invoiceDetails.totalAmount, 'ether');
 
+
       const tx = await factoryContract.methods
         .createInvoice(recipients, shares, totalAmount, invoiceDetails.description)
         .send({ from: account });
-
+      console.log('Invoice created successfully:', tx);
       return tx;
+
     } catch (err) {
       console.error('Failed to create invoice:', err);
       setError('Failed to create invoice. Please try again.');
