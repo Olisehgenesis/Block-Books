@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useInvoiceContract } from "./assets/hooks/useInvoice";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
+import { QRCodeSVG } from "qrcode.react";
+import { Clipboard, CheckCircle, XCircle } from "lucide-react";
 
 type InvoiceDetails = {
   recipients: string[];
@@ -115,7 +117,9 @@ const InvoiceApp: React.FC = () => {
           isCorrectChain ? "text-green-600" : "text-red-600"
         } mb-4`}
       >
-        Chain ID: {chainId}
+        {isCorrectChain
+          ? "Connected to the correct chain"
+          : `Connected to the wrong chain. Please switch to ${SWISSTRONIK_CHAIN_ID}`}
       </div>
     );
   };
@@ -124,7 +128,8 @@ const InvoiceApp: React.FC = () => {
     <div
       className="bg-gradient-to-r from-blue-500 to-purple-600 min-h-screen flex items-center justify-center"
       style={{
-        backgroundImage: "url('/api/placeholder/1920/1080')",
+        backgroundImage:
+          "url('https://img.freepik.com/free-vector/printing-invoices-concept-illustration_114360-2390.jpg?t=st=1727536851~exp=1727540451~hmac=10ffbf95552f8b301f2e113f776260410e34e2a4f9978d1a59827172b215f1d5&w=740')",
         backgroundSize: "cover",
         backgroundPosition: "center",
       }}
@@ -150,8 +155,8 @@ const InvoiceApp: React.FC = () => {
   );
 
   const renderDashboard = () => (
-    <div className="bg-gradient-to-r from-purple-100 to-pink-100 min-h-screen p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
+    <div className="bg-gradient-to-r from-green-100 to-green-200 min-h-screen p-8">
+      <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-8">
         <h2 className="text-3xl font-bold mb-6 text-gray-800">Dashboard</h2>
         {renderChainId()}
         <p className="text-gray-600 mb-6">
@@ -171,35 +176,68 @@ const InvoiceApp: React.FC = () => {
           </button>
         </div>
         {txHash && (
-          <div className="mt-6 p-4 bg-blue-100 rounded-lg">
-            <p className="text-sm text-blue-800">Last Transaction Hash:</p>
+          <div className="mt-6 p-4 bg-green-100 rounded-lg">
+            <p className="text-sm text-green-800">Last Transaction Hash:</p>
             <p className="text-xs font-mono break-all">{txHash}</p>
           </div>
         )}
         <div className="mt-6">
           <h3 className="text-xl font-bold mb-4">Deployed Invoices</h3>
           {deployedInvoices.length > 0 ? (
-            <ul className="space-y-4">
-              {deployedInvoices.map((invoice, index) => (
-                <li key={index} className="border p-4 rounded-lg">
-                  <p>
-                    <strong>Address:</strong> {invoice.address}
-                  </p>
-                  <p>
-                    <strong>Total Amount:</strong> {invoice.totalAmount} SWTR
-                  </p>
-                  <p>
-                    <strong>Description:</strong> {invoice.description}
-                  </p>
-                  <p>
-                    <strong>Paid:</strong> {invoice.isPaid ? "Yes" : "No"}
-                  </p>
-                  <p>
-                    <strong>Paid Amount:</strong> {invoice.paidAmount} SWTR
-                  </p>
-                </li>
-              ))}
-            </ul>
+            <div className="overflow-x-auto">
+              <table className="min-w-full bg-white shadow-md rounded-lg overflow-hidden">
+                <thead className="bg-green-500 text-white">
+                  <tr>
+                    <th className="py-3 px-4 text-left">Address</th>
+                    <th className="py-3 px-4 text-left">Description</th>
+                    <th className="py-3 px-4 text-left">Total Amount</th>
+                    <th className="py-3 px-4 text-left">Status</th>
+                    <th className="py-3 px-4 text-left">QR Code</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {deployedInvoices.map((invoice, index) => (
+                    <tr
+                      key={index}
+                      className="border-b hover:bg-gray-100 transition-colors duration-200"
+                    >
+                      <td className="py-3 px-4">
+                        <div className="flex items-center">
+                          <span className="mr-2 font-mono text-sm">
+                            {invoice.address.slice(0, 10)}...
+                          </span>
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(invoice.address);
+                              // You might want to add a state to show a copied notification
+                            }}
+                            className="text-green-500 hover:text-green-700"
+                          >
+                            <Clipboard size={16} />
+                          </button>
+                        </div>
+                      </td>
+                      <td className="py-3 px-4">{invoice.description}</td>
+                      <td className="py-3 px-4">{invoice.totalAmount} SWTR</td>
+                      <td className="py-3 px-4">
+                        {invoice.isPaid ? (
+                          <span className="flex items-center text-green-500">
+                            <CheckCircle size={16} className="mr-1" /> Paid
+                          </span>
+                        ) : (
+                          <span className="flex items-center text-red-500">
+                            <XCircle size={16} className="mr-1" /> Unpaid
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-3 px-4">
+                        <QRCodeSVG value={invoice.address} size={64} />
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
             <p>No invoices created yet.</p>
           )}

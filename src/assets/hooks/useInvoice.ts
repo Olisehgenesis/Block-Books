@@ -39,11 +39,12 @@ export const useInvoiceContract = () => {
         setWeb3(web3Instance);
 
         const id = await web3Instance.eth.getChainId();
+        const newId = Number(id);
         console.log('Chain ID:', id);
-        setChainId(id);
+        setChainId(newId);
 
         window.ethereum.on('chainChanged', (chainId: string) => {
-          setChainId(parseInt(chainId, 16));
+          setChainId(newId);
         });
 
         console.log('Web3 and Swisstronik plugin initialized successfully');
@@ -160,7 +161,8 @@ export const useInvoiceContract = () => {
     }
     try {
       const id = await web3.eth.getChainId();
-      setChainId(id);
+      const newId = Number(id);
+      setChainId(newId);
       return id;
     } catch (err) {
       console.error('Failed to get chain ID:', err);
