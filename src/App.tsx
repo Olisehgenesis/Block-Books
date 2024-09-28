@@ -31,11 +31,11 @@ type ViewState = "login" | "dashboard" | "createInvoice";
 
 const SWISSTRONIK_CHAIN_ID = 1291;
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
-const [isCorrectChain, setIsCorrectChain] = useState<boolean>(false);
 
 const InvoiceApp: React.FC = () => {
   const {
     account,
+    // chainId,
     error: contractError,
     connectWallet,
     createInvoice,
@@ -55,6 +55,7 @@ const InvoiceApp: React.FC = () => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [deployedInvoices, setDeployedInvoices] = useState<InvoiceData[]>([]);
   const [error, setError] = useState<string>("");
+  const [isCorrectChain, setIsCorrectChain] = useState<boolean>(false);
 
   useEffect(() => {
     if (account) {
@@ -69,6 +70,7 @@ const InvoiceApp: React.FC = () => {
       setError(contractError);
     }
   }, [contractError]);
+
   useEffect(() => {
     const checkChain = async () => {
       const chainId = await getChainId();
@@ -124,7 +126,7 @@ const InvoiceApp: React.FC = () => {
     }
   }, [createInvoice, fetchInvoices, invoiceDetails]);
 
-  return (
+  const renderChainId = () => (
     <div
       className={`text-sm ${
         isCorrectChain ? "text-green-600" : "text-red-600"
@@ -150,11 +152,11 @@ const InvoiceApp: React.FC = () => {
     >
       <div className="bg-white bg-opacity-90 p-8 rounded-lg shadow-2xl max-w-md w-full backdrop-filter backdrop-blur-sm">
         <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">
-          BlockChain Invoicing
+          BlockChain Split Invoicing
         </h2>
         {/* {renderChainId()} */}
         <p className="text-gray-600 mb-6 text-center">
-          Simplify your invoicing with the power of blockchain technology
+          Simplify Invoice Sharing with the power of blockchain technology
         </p>
         {error && <div className="text-red-500 mb-4">{error}</div>}
         <button
@@ -401,6 +403,7 @@ const InvoiceApp: React.FC = () => {
           <span className="block sm:inline">{error}</span>
         </div>
       )}
+      {isLoggedIn && renderChainId()}
       {!isLoggedIn && renderLogin()}
       {isLoggedIn && view === "dashboard" && renderDashboard()}
       {isLoggedIn && view === "createInvoice" && renderCreateInvoice()}

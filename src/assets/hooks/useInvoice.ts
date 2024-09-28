@@ -128,6 +128,15 @@ export const useInvoiceContract = () => {
     }
   }, [web3, account]);
 
+  type InvoiceDetailsArray = [
+    string[],   // recipients
+    (string | number)[],   // shares (can be string or number, depending on the ABI return)
+    number,     // totalAmount
+    string,     // description
+    boolean,    // isPaid
+    string      // paidAmount
+  ];
+  
   const fetchInvoiceDetails = useCallback(async (invoiceAddress: string): Promise<InvoiceData | null> => {
     if (!web3) {
       setError('Web3 not initialized');
@@ -136,15 +145,11 @@ export const useInvoiceContract = () => {
   
     try {
       const invoiceContract = new web3.eth.Contract(InvoiceABI, invoiceAddress);
-      const details = await invoiceContract.methods.getInvoiceDetails().call();
+      const details: InvoiceDetailsArray = await invoiceContract.methods.getInvoiceDetails().call();
   
-      // Ensure details is an array and contains the expected values
-      if (!Array.isArray(details) || details.length < 6) {
-        return null;
-      }
-  
-      // Validate that details[1] is an array before mapping
+      // Map shares only if it's a valid array
       const shares = Array.isArray(details[1]) ? details[1].map(Number) : [];
+    
   
       return {
         address: invoiceAddress,
@@ -153,13 +158,14 @@ export const useInvoiceContract = () => {
         totalAmount: web3.utils.fromWei(details[2], 'ether'),
         description: details[3],
         isPaid: details[4],
-        paidAmount: web3.utils.fromWei(details[5], 'ether')
+        paidAmount: web3.utils.fromWei(details[5], 'ether'),
       };
     } catch (err) {
       console.error(`Failed to fetch details for invoice at ${invoiceAddress}:`, err);
       return null;
     }
   }, [web3]);
+  
   
 
   const getChainId = useCallback(async (): Promise<number | null> => {
