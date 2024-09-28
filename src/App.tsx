@@ -1,42 +1,60 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useInvoiceContract } from "./assets/hooks/useInvoice";
+import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
 
-interface InvoiceDetails {
+type InvoiceDetails = {
   recipients: string[];
-  shares: string[];
+  shares: number[];
   totalAmount: string;
   description: string;
-}
+};
+
+type InvoiceData = {
+  address: string;
+  recipients: string[];
+  shares: number[];
+  totalAmount: string;
+  description: string;
+  isPaid: boolean;
+  paidAmount: string;
+};
+
+type ViewState = "login" | "dashboard" | "createInvoice";
+
+const SWISSTRONIK_CHAIN_ID = 1291;
+const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
 
 const InvoiceApp: React.FC = () => {
   const {
     account,
+    chainId,
     error: contractError,
     connectWallet,
     createInvoice,
     fetchUserInvoices,
+    getChainId,
   } = useInvoiceContract();
+
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
-  const [view, setView] = useState<"login" | "dashboard" | "createInvoice">(
-    "login"
-  );
+  const [view, setView] = useState<ViewState>("login");
   const [invoiceDetails, setInvoiceDetails] = useState<InvoiceDetails>({
     recipients: [""],
-    shares: [""],
+    shares: [100],
     totalAmount: "",
     description: "",
   });
   const [txHash, setTxHash] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [deployedInvoices, setDeployedInvoices] = useState<any[]>([]);
+  const [deployedInvoices, setDeployedInvoices] = useState<InvoiceData[]>([]);
   const [error, setError] = useState<string>("");
 
   useEffect(() => {
     if (account) {
       setIsLoggedIn(true);
       fetchInvoices();
+      getChainId();
     }
-  }, [account]);
+  }, [account, fetchUserInvoices, getChainId]);
 
   useEffect(() => {
     if (contractError) {
@@ -44,7 +62,12 @@ const InvoiceApp: React.FC = () => {
     }
   }, [contractError]);
 
-  const handleConnect = async () => {
+  const fetchInvoices = useCallback(async () => {
+    const invoices = await fetchUserInvoices();
+    setDeployedInvoices(invoices);
+  }, [fetchUserInvoices]);
+
+  const handleConnect = useCallback(async () => {
     setIsLoading(true);
     setError("");
     try {
@@ -58,22 +81,20 @@ const InvoiceApp: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [connectWallet]);
 
-  const handleCreateInvoice = async () => {
+  const handleCreateInvoice = useCallback(async () => {
     setIsLoading(true);
     setError("");
     try {
       const tx = await createInvoice(invoiceDetails);
       if (tx) {
-        console.log("we are here");
-        console.log(tx);
         setTxHash(tx.transactionHash);
         await fetchInvoices();
         setView("dashboard");
         setInvoiceDetails({
           recipients: [""],
-          shares: [""],
+          shares: [100],
           totalAmount: "",
           description: "",
         });
@@ -83,63 +104,40 @@ const InvoiceApp: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [createInvoice, fetchInvoices, invoiceDetails]);
 
-  const fetchInvoices = async () => {
-    setError("");
-    try {
-      const invoices = await fetchUserInvoices();
-      setDeployedInvoices(invoices);
-    } catch (err) {
-      setError("Failed to fetch invoices. Please try again.");
-    }
-  };
-
-  const addRecipient = () => {
-    setInvoiceDetails((prev) => ({
-      ...prev,
-      recipients: [...prev.recipients, ""],
-      shares: [...prev.shares, ""],
-    }));
-  };
-
-  const updateRecipient = (index: number, value: string) => {
-    const newRecipients = [...invoiceDetails.recipients];
-    newRecipients[index] = value;
-    setInvoiceDetails((prev) => ({ ...prev, recipients: newRecipients }));
-  };
-
-  const updateShare = (index: number, value: string) => {
-    const newShares = [...invoiceDetails.shares];
-    newShares[index] = value;
-    setInvoiceDetails((prev) => ({ ...prev, shares: newShares }));
-  };
-
-  const renderError = () => {
-    if (error) {
-      return (
-        <div
-          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
-          role="alert"
-        >
-          <strong className="font-bold">Error: </strong>
-          <span className="block sm:inline">{error}</span>
-        </div>
-      );
-    }
-    return null;
+  const renderChainId = () => {
+    if (chainId === null) return null;
+    const isCorrectChain = chainId === SWISSTRONIK_CHAIN_ID;
+    return (
+      <div
+        className={`text-sm ${
+          isCorrectChain ? "text-green-600" : "text-red-600"
+        } mb-4`}
+      >
+        Chain ID: {chainId}
+      </div>
+    );
   };
 
   const renderLogin = () => (
-    <div className="bg-gradient-to-r from-blue-500 to-purple-600 min-h-screen flex items-center justify-center">
-      <div className="bg-white p-8 rounded-lg shadow-2xl max-w-md w-full">
+    <div
+      className="bg-gradient-to-r from-blue-500 to-purple-600 min-h-screen flex items-center justify-center"
+      style={{
+        backgroundImage: "url('/api/placeholder/1920/1080')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      <div className="bg-white bg-opacity-90 p-8 rounded-lg shadow-2xl max-w-md w-full backdrop-filter backdrop-blur-sm">
         <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">
           BlockChain Invoicing
         </h2>
+        {renderChainId()}
         <p className="text-gray-600 mb-6 text-center">
           Simplify your invoicing with the power of blockchain technology
         </p>
-        {renderError()}
+        {error && <div className="text-red-500 mb-4">{error}</div>}
         <button
           onClick={handleConnect}
           className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:from-blue-600 hover:to-purple-700 transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -152,9 +150,10 @@ const InvoiceApp: React.FC = () => {
   );
 
   const renderDashboard = () => (
-    <div className="bg-gray-100 min-h-screen p-8">
+    <div className="bg-gradient-to-r from-purple-100 to-pink-100 min-h-screen p-8">
       <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
         <h2 className="text-3xl font-bold mb-6 text-gray-800">Dashboard</h2>
+        {renderChainId()}
         <p className="text-gray-600 mb-6">
           Welcome to your blockchain-powered invoicing system. Create and manage
           invoices with ease and security.
@@ -210,62 +209,124 @@ const InvoiceApp: React.FC = () => {
   );
 
   const renderCreateInvoice = () => (
-    <div className="bg-gray-100 min-h-screen p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-lg p-8">
+    <div
+      className="bg-gradient-to-r from-purple-100 to-pink-100 min-h-screen p-8"
+      style={{
+        backgroundImage: "url('/api/placeholder/1920/1080')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
+    >
+      <div className="max-w-4xl mx-auto bg-white bg-opacity-90 rounded-lg shadow-lg p-8 backdrop-filter backdrop-blur-sm">
         <h2 className="text-3xl font-bold mb-6 text-gray-800">
           Create Invoice
         </h2>
+        {renderChainId()}
+        <p className="text-gray-600 mb-6">Connected Account: {account}</p>
         <p className="text-gray-600 mb-6">
           Fill in the details below to create a new blockchain-based invoice.
         </p>
-        {invoiceDetails.recipients.map((recipient, index) => (
-          <div key={index} className="mb-4 flex space-x-2">
-            <input
-              type="text"
-              placeholder="Recipient Address"
-              value={recipient}
-              onChange={(e) => updateRecipient(index, e.target.value)}
-              className="flex-grow shadow-sm border border-gray-300 rounded-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
+        <div className="flex flex-wrap -mx-2">
+          <div className="w-full md:w-1/2 px-2">
+            {invoiceDetails.recipients.map((recipient, index) => (
+              <div key={index} className="mb-4 flex space-x-2">
+                <input
+                  type="text"
+                  placeholder="Recipient Address"
+                  value={recipient}
+                  onChange={(e) => {
+                    const newRecipients = [...invoiceDetails.recipients];
+                    newRecipients[index] = e.target.value;
+                    setInvoiceDetails((prev) => ({
+                      ...prev,
+                      recipients: newRecipients,
+                    }));
+                  }}
+                  className="flex-grow shadow-sm border border-gray-300 rounded-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                <input
+                  type="number"
+                  placeholder="Share (%)"
+                  value={invoiceDetails.shares[index]}
+                  onChange={(e) => {
+                    const newShares = [...invoiceDetails.shares];
+                    newShares[index] = parseInt(e.target.value);
+                    setInvoiceDetails((prev) => ({
+                      ...prev,
+                      shares: newShares,
+                    }));
+                  }}
+                  className="w-1/4 shadow-sm border border-gray-300 rounded-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            ))}
+            <button
+              onClick={() => {
+                setInvoiceDetails((prev) => ({
+                  ...prev,
+                  recipients: [...prev.recipients, ""],
+                  shares: [...prev.shares, 0],
+                }));
+              }}
+              className="mb-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            >
+              Add Recipient
+            </button>
             <input
               type="number"
-              placeholder="Share (%)"
-              value={invoiceDetails.shares[index]}
-              onChange={(e) => updateShare(index, e.target.value)}
-              className="w-1/4 shadow-sm border border-gray-300 rounded-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              placeholder="Total Amount (SWTR)"
+              value={invoiceDetails.totalAmount}
+              onChange={(e) =>
+                setInvoiceDetails((prev) => ({
+                  ...prev,
+                  totalAmount: e.target.value,
+                }))
+              }
+              className="w-full mb-4 shadow-sm border border-gray-300 rounded-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            />
+            <textarea
+              placeholder="Description"
+              value={invoiceDetails.description}
+              onChange={(e) =>
+                setInvoiceDetails((prev) => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              className="w-full mb-4 shadow-sm border border-gray-300 rounded-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              rows={4}
             />
           </div>
-        ))}
-        <button
-          onClick={addRecipient}
-          className="mb-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          Add Recipient
-        </button>
-        <input
-          type="number"
-          placeholder="Total Amount (SWTR)"
-          value={invoiceDetails.totalAmount}
-          onChange={(e) =>
-            setInvoiceDetails((prev) => ({
-              ...prev,
-              totalAmount: e.target.value,
-            }))
-          }
-          className="w-full mb-4 shadow-sm border border-gray-300 rounded-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        />
-        <textarea
-          placeholder="Description"
-          value={invoiceDetails.description}
-          onChange={(e) =>
-            setInvoiceDetails((prev) => ({
-              ...prev,
-              description: e.target.value,
-            }))
-          }
-          className="w-full mb-4 shadow-sm border border-gray-300 rounded-lg py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          rows={4}
-        />
+          <div className="w-full md:w-1/2 px-2">
+            <div className="bg-white p-4 rounded-lg shadow">
+              <h3 className="text-lg font-semibold mb-2">Share Distribution</h3>
+              <ResponsiveContainer width="100%" height={300}>
+                <PieChart>
+                  <Pie
+                    data={invoiceDetails.recipients.map((recipient, index) => ({
+                      name: recipient || `Recipient ${index + 1}`,
+                      value: invoiceDetails.shares[index],
+                    }))}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {invoiceDetails.recipients.map((_, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
+                    ))}
+                  </Pie>
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        </div>
         <button
           onClick={handleCreateInvoice}
           className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
@@ -279,7 +340,15 @@ const InvoiceApp: React.FC = () => {
 
   return (
     <div className="app-container">
-      {renderError()}
+      {error && (
+        <div
+          className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative"
+          role="alert"
+        >
+          <strong className="font-bold">Error: </strong>
+          <span className="block sm:inline">{error}</span>
+        </div>
+      )}
       {!isLoggedIn && renderLogin()}
       {isLoggedIn && view === "dashboard" && renderDashboard()}
       {isLoggedIn && view === "createInvoice" && renderCreateInvoice()}
