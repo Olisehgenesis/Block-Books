@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Web3 } from 'web3';
+import Web3 from 'web3';
 import { SwisstronikPlugin } from '@swisstronik/web3-plugin-swisstronik';
 import InvoiceFactoryABI from '../contract/InvoiceFactory.abi.json';
 import InvoiceABI from '../contract/Invoice.abi.json';
 
 const FACTORY_ADDRESS = '0x180d2967cb720dca95dab7306aa34369837d9345';
 const RPC_URL = 'https://json-rpc.testnet.swisstronik.com/';
-const SWISSTRONIK_CHAIN_ID = 1291;
 
 type InvoiceDetails = {
   recipients: string[];
@@ -40,11 +39,11 @@ export const useInvoiceContract = () => {
 
         const id = await web3Instance.eth.getChainId();
         const newId = Number(id);
-        console.log('Chain ID:', id);
+        console.log('Chain ID:', newId);
         setChainId(newId);
 
-        window.ethereum.on('chainChanged', (chainId: string) => {
-          setChainId(newId);
+        window.ethereum.on('chainChanged', () => {
+          setChainId(newId);  // No need to use the `chainId` param
         });
 
         console.log('Web3 and Swisstronik plugin initialized successfully');
@@ -93,7 +92,7 @@ export const useInvoiceContract = () => {
     try {
       const factoryContract = new web3.eth.Contract(InvoiceFactoryABI, FACTORY_ADDRESS);
       const totalAmountWei = web3.utils.toWei(invoiceDetails.totalAmount, 'ether');
-      const { recipients, shares, totalAmount, description } = invoiceDetails;
+      const { recipients, shares, description } = invoiceDetails; // removed `totalAmount`
 
       const tx = await factoryContract.methods
         .createInvoice(recipients, shares, totalAmountWei, description)
@@ -115,10 +114,10 @@ export const useInvoiceContract = () => {
 
     try {
       const factoryContract = new web3.eth.Contract(InvoiceFactoryABI, FACTORY_ADDRESS);
-      const invoiceAddresses = await factoryContract.methods.getUserInvoices(account).call();
-      
+      const invoiceAddresses: string[] = await factoryContract.methods.getUserInvoices(account).call();
+
       const invoicesDetails = await Promise.all(
-        invoiceAddresses.map(address => fetchInvoiceDetails(address))
+        invoiceAddresses.map((address: string) => fetchInvoiceDetails(address))
       );
 
       return invoicesDetails.filter((invoice): invoice is InvoiceData => invoice !== null);
@@ -134,15 +133,23 @@ export const useInvoiceContract = () => {
       setError('Web3 not initialized');
       return null;
     }
-
+  
     try {
       const invoiceContract = new web3.eth.Contract(InvoiceABI, invoiceAddress);
       const details = await invoiceContract.methods.getInvoiceDetails().call();
-
+  
+      // Ensure details is an array and contains the expected values
+      if (!Array.isArray(details) || details.length < 6) {
+        return null;
+      }
+  
+      // Validate that details[1] is an array before mapping
+      const shares = Array.isArray(details[1]) ? details[1].map(Number) : [];
+  
       return {
         address: invoiceAddress,
         recipients: details[0],
-        shares: details[1].map(Number),
+        shares,
         totalAmount: web3.utils.fromWei(details[2], 'ether'),
         description: details[3],
         isPaid: details[4],
@@ -153,6 +160,7 @@ export const useInvoiceContract = () => {
       return null;
     }
   }, [web3]);
+  
 
   const getChainId = useCallback(async (): Promise<number | null> => {
     if (!web3) {
@@ -163,7 +171,7 @@ export const useInvoiceContract = () => {
       const id = await web3.eth.getChainId();
       const newId = Number(id);
       setChainId(newId);
-      return id;
+      return newId;
     } catch (err) {
       console.error('Failed to get chain ID:', err);
       setError('Failed to get chain ID. Please try again.');
@@ -179,6 +187,6 @@ export const useInvoiceContract = () => {
     createInvoice,
     fetchUserInvoices,
     fetchInvoiceDetails,
-    getChainId
+    getChainId,
   };
 };

@@ -4,6 +4,12 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend } from "recharts";
 import { QRCodeSVG } from "qrcode.react";
 import { Clipboard, CheckCircle, XCircle } from "lucide-react";
 
+declare global {
+  interface Window {
+    ethereum: any;
+  }
+}
+
 type InvoiceDetails = {
   recipients: string[];
   shares: number[];
@@ -25,11 +31,11 @@ type ViewState = "login" | "dashboard" | "createInvoice";
 
 const SWISSTRONIK_CHAIN_ID = 1291;
 const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#8884D8"];
+const [isCorrectChain, setIsCorrectChain] = useState<boolean>(false);
 
 const InvoiceApp: React.FC = () => {
   const {
     account,
-    chainId,
     error: contractError,
     connectWallet,
     createInvoice,
@@ -63,6 +69,16 @@ const InvoiceApp: React.FC = () => {
       setError(contractError);
     }
   }, [contractError]);
+  useEffect(() => {
+    const checkChain = async () => {
+      const chainId = await getChainId();
+      setIsCorrectChain(chainId === SWISSTRONIK_CHAIN_ID);
+    };
+
+    if (account) {
+      checkChain();
+    }
+  }, [account, getChainId]);
 
   const fetchInvoices = useCallback(async () => {
     const invoices = await fetchUserInvoices();
@@ -136,7 +152,7 @@ const InvoiceApp: React.FC = () => {
         <h2 className="text-3xl font-bold mb-6 text-center text-gray-800">
           BlockChain Invoicing
         </h2>
-        {renderChainId()}
+        {/* {renderChainId()} */}
         <p className="text-gray-600 mb-6 text-center">
           Simplify your invoicing with the power of blockchain technology
         </p>
@@ -156,7 +172,7 @@ const InvoiceApp: React.FC = () => {
     <div className="bg-gradient-to-r from-green-100 to-green-200 min-h-screen p-8">
       <div className="max-w-6xl mx-auto bg-white rounded-lg shadow-lg p-8">
         <h2 className="text-3xl font-bold mb-6 text-gray-800">Dashboard</h2>
-        {renderChainId()}
+        {/* {renderChainId()} */}
         <p className="text-gray-600 mb-6">
           Welcome to your blockchain-powered invoicing system. Create and manage
           invoices with ease and security.
@@ -257,7 +273,7 @@ const InvoiceApp: React.FC = () => {
         <h2 className="text-3xl font-bold mb-6 text-gray-800">
           Create Invoice
         </h2>
-        {renderChainId()}
+        {/* {renderChainId()} */}
         <p className="text-gray-600 mb-6">Connected Account: {account}</p>
         <p className="text-gray-600 mb-6">
           Fill in the details below to create a new blockchain-based invoice.
